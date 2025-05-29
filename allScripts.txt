@@ -1,0 +1,4198 @@
+﻿Folder: ServerScriptService - Type: Script - Name: GameLogic
+print("Hello world!")
+
+
+---------
+Folder: ServerScriptService - Type: Script - Name: BossMessageHandler
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+Folder: ServerScriptService - Type: Script - Name: GameLogic
+print("Hello world!")
+
+
+---------
+Folder: ServerScriptService - Type: Script - Name: BossMessageHandler
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+
+
+BossMessageEvent.OnServerEvent:Connect(function(player)
+        -- Basic validation
+        if not player.Character then return end
+        local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+
+
+        -- Optional position check
+        local room = workspace:FindFirstChild("room 1")
+        if not room then return end
+        local floorPart = room:FindFirstChild("floorpart")
+        if not floorPart then return end
+
+
+        if (rootPart.Position - floorPart.Position).Magnitude > 50 then
+                warn("Player too far from floorpart:", player.Name)
+                return
+        end
+
+
+        -- Confirm message
+        BossMessageEvent:FireClient(player)
+end)
+---------
+Folder: ServerScriptService - Type: Script - Name: UpgradeEvent
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechEvents = ReplicatedStorage:WaitForChild("MechEvents")
+local UpgradeEvent = MechEvents:WaitForChild("UpgradeEvent")
+local RevertUpgradeEvent = MechEvents:WaitForChild("RevertUpgradeEvent")
+local UpgradeEventDX = MechEvents:WaitForChild("UpgradeEventDX")
+local RevertUpgradeEventDX = MechEvents:WaitForChild("RevertUpgradeEventDX")
+local UnlockUpgradeEvent = MechEvents:WaitForChild("UnlockUpgradeEvent")
+local RequestUpgradeEvent = MechEvents:WaitForChild("RequestUpgradeEvent")
+local RequestUpgradeEventDX = MechEvents:WaitForChild("RequestUpgradeEventDX")
+
+
+local CodeBlocks = ReplicatedStorage:WaitForChild("CodeBlocks")
+local UpgradeManager = require(ReplicatedStorage:WaitForChild("UpgradeManager")) -- Your module script
+
+
+--Function to apply an upgrade
+UpgradeEvent.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlock = ReplicatedStorage.CodeBlocks:FindFirstChild(codeBlockName)
+                if codeBlock and codeBlock:IsA("ModuleScript") then
+                        local upgrade = require(codeBlock)
+                        upgrade.apply(mech)
+                        print("Upgrade applied:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to revert an upgrade
+RevertUpgradeEvent.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlock = ReplicatedStorage.CodeBlocks:FindFirstChild(codeBlockName)
+                if codeBlock and codeBlock:IsA("ModuleScript") then
+                        local upgrade = require(codeBlock)
+                        upgrade.revert(mech)
+                        print("Upgrade reverted:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to apply a DX upgrade
+UpgradeEventDX.OnServerEvent:Connect(function(player, codeBlockName)
+        print("dx event fired")
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlockDX = ReplicatedStorage.CodeBlocksDX:FindFirstChild(codeBlockName)
+                if codeBlockDX and codeBlockDX:IsA("ModuleScript") then
+                        local upgrade = require(codeBlockDX)
+                        upgrade.apply(mech)
+                        print("Upgrade applied:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to revert a DX upgrade
+RevertUpgradeEventDX.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlockDX = ReplicatedStorage.CodeBlocksDX:FindFirstChild(codeBlockName)
+                if codeBlockDX and codeBlockDX:IsA("ModuleScript") then
+                        local upgrade = require(codeBlockDX)
+                        upgrade.revert(mech)
+                        print("Upgrade reverted:", codeBlockName)
+                end
+        end
+end)
+
+
+-- New: Handle proximity prompt upgrade requests
+RequestUpgradeEvent.OnServerEvent:Connect(function(player)
+        local upgradeName = UpgradeManager.UnlockRandomUpgrade(player)
+        if upgradeName then
+                UnlockUpgradeEvent:FireClient(player, upgradeName)
+        end
+end)
+
+
+RequestUpgradeEventDX.OnServerEvent:Connect(function(player)
+        local upgradeName = UpgradeManager.UnlockRandomUpgradeDX(player)
+        if upgradeName then
+                UnlockUpgradeEvent:FireClient(player, upgradeName)
+        end
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: LocalScript
+
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+
+local function lockCharacter()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+
+
+        humanoid.WalkSpeed = 0
+        humanoid.JumpPower = 0
+end
+
+
+local function unlockCharacter()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+
+
+        humanoid.WalkSpeed = 16
+        humanoid.JumpPower = 50
+end
+
+
+-- Lock at game start
+lockCharacter()
+
+
+-- Unlock when text finishes (adjust timing to match your text duration)
+task.wait(1) -- 5 messages * 5 seconds each
+unlockCharacter()
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: CameraControl
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local seat = workspace.PLAYERMECH:WaitForChild("VehicleSeat")
+local mech = seat.Parent
+
+
+-- Camera settings
+local CAMERA_OFFSET = Vector3.new(10, 30, 10) -- Third-person view behind mech
+local MOUSE_SENSITIVITY = 0.5 -- Adjust for faster/slower rotation
+local camera = workspace.CurrentCamera
+
+
+-- Track mouse rotation
+local pitch = 0 -- Vertical rotation (up/down)
+local yaw = 0 -- Horizontal rotation (left/right)
+
+
+-- Capture mouse movement
+UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+                yaw = yaw - input.Delta.X * MOUSE_SENSITIVITY
+                pitch = math.clamp(pitch - input.Delta.Y * MOUSE_SENSITIVITY, -80, 80)
+        end
+end)
+
+
+-- Update camera every frame
+RunService.RenderStepped:Connect(function()
+        if seat.Occupant and seat.Occupant.Parent == player.Character then
+                -- Get mech's position (but ignore its rotation)
+                local hrp=mech.HumanoidRootPart
+                local hrpc=hrp.CFrame
+                local mechPosition = mech.HumanoidRootPart.Position
+                mechPosition= mechPosition+Vector3.new(15,15,5)
+                -- Calculate camera rotation from mouse input
+                local cameraRotation = CFrame.Angles(0, math.rad(yaw), 0) * CFrame.Angles(math.rad(pitch), 0, 0)
+                local off=hrpc:VectorToWorldSpace(cameraRotation*CAMERA_OFFSET)
+                -- Position camera behind mech with manual rotation
+                camera.CFrame = CFrame.new(mechPosition + cameraRotation * CAMERA_OFFSET, mechPosition)
+        end
+end)
+seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+        if not seat.Occupant then
+                camera.CameraType = Enum.CameraType.Custom
+        end
+end)
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: MechScript
+-- LocalScript (StarterPlayerScripts/MechControls)
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechMoveEvent = ReplicatedStorage:WaitForChild("MechEvents"):WaitForChild("MechMoveEvent")
+
+
+local function getCameraRelativeDirection()
+        local camera = workspace.CurrentCamera
+        local lookVector = camera.CFrame.LookVector-- Forward direction
+        local rightVector = camera.CFrame.RightVector -- Right direction
+
+
+        -- Fixed input handling
+        local forward = (UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0)
+        local backward = (UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+        local left = (UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0)
+        local right = (UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0)
+
+
+        -- Combine directions
+        local direction = (lookVector * (forward - backward)) + (rightVector * (right - left))
+        return direction.Unit -- Normalized direction
+end
+
+
+-- Send input 60 times/sec
+game:GetService("RunService").Heartbeat:Connect(function()
+        local direction = getCameraRelativeDirection()
+        MechMoveEvent:FireServer(direction)
+end)
+
+
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: LocalAim
+-- LocalScript (StarterPlayerScripts/LocalAim)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local MechRotateTorsoEvent = ReplicatedStorage:WaitForChild("MechAimEvent")
+local mech = workspace:WaitForChild("PLAYERMECH")
+local seat = mech:WaitForChild("VehicleSeat")
+
+
+RunService.Heartbeat:Connect(function()
+        if seat.Occupant and seat.Occupant.Parent == player.Character then
+                local camera = workspace.CurrentCamera
+                local cameraCFrame = camera.CFrame
+                local pitch, yaw, roll = cameraCFrame:ToEulerAnglesYXZ()
+                MechRotateTorsoEvent:FireServer(
+                        math.deg(pitch),  -- X-axis rotation (up/down)
+                        math.deg(yaw),    -- Y-axis rotation (left/right)
+                        math.deg(roll)    -- Z-axis rotation (tilt)
+                )
+        end
+end)
+
+
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: BossTriggerDetector
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
+local player = Players.LocalPlayer
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+
+
+-- Configuration
+local ROOM_NAME = "room 1"
+local FLOOR_PART_NAME = "floorpart"
+local TRIGGER_HEIGHT = 2 -- Units above floor
+local TRIGGER_PADDING = 5
+
+
+-- Find room and floor part
+local room = workspace:FindFirstChild(ROOM_NAME)
+if not room then
+        warn("Room not found:", ROOM_NAME)
+        return
+end
+
+
+local floorPart = room:FindFirstChild(FLOOR_PART_NAME)
+if not floorPart then
+        warn(FLOOR_PART_NAME, "missing in", ROOM_NAME)
+        return
+end
+
+
+-- Create visible trigger
+local trigger = Instance.new("Part")
+trigger.Name = "Room1Trigger"
+trigger.Size = floorPart.Size + Vector3.new(TRIGGER_PADDING, TRIGGER_HEIGHT, TRIGGER_PADDING)
+trigger.Position = floorPart.Position + Vector3.new(0, TRIGGER_HEIGHT/2, 0)
+trigger.Transparency = 0.7
+trigger.Color = Color3.new(1, 0, 0) -- Red = inactive
+trigger.Anchored = true
+trigger.CanCollide = false
+trigger.Parent = workspace
+
+
+-- Detection system
+game:GetService("RunService").Heartbeat:Connect(function()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+
+
+        if (rootPart.Position - trigger.Position).Magnitude < (trigger.Size.X/2) then
+                BossMessageEvent:FireServer()
+                trigger.Color = Color3.new(0, 1, 0) -- Green = active
+                task.wait(1)
+                trigger.Color = Color3.new(1, 0, 0)
+        end
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: BossMessageGUI
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
+local player = Players.LocalPlayer
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BossWarning"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(0.8, 0, 0.15, 0)
+textLabel.Position = UDim2.new(0.1, 0, 0.3, 0)
+textLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+textLabel.BackgroundTransparency = 0.7
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.Text = "WARNING: Combat Zone Ahead!\nPrepare for battle!"
+textLabel.TextSize = 28
+textLabel.Visible = false
+textLabel.ZIndex = 1000
+textLabel.Font = Enum.Font.GothamBold
+textLabel.TextWrapped = true
+textLabel.Parent = screenGui
+
+
+-- Message display
+BossMessageEvent.OnClientEvent:Connect(function()
+        textLabel.Visible = true
+        textLabel.TextTransparency = 0
+
+
+        -- Fade out after 5 seconds
+        for i = 1, 10 do
+                textLabel.TextTransparency = i * 0.1
+                task.wait(0.5)
+        end
+
+
+        textLabel.Visible = false
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: weapon
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FireWeaponEvent = ReplicatedStorage:WaitForChild("MechEvents"):WaitForChild("FireWeaponEvent")
+
+
+local seat = workspace.PLAYERMECH:WaitForChild("VehicleSeat")
+
+
+UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then
+                if seat.Occupant and seat.Occupant.Parent == game.Players.LocalPlayer.Character then
+                        print("shoot")
+                        FireWeaponEvent:FireServer()
+                end
+        end
+end)
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: SpeedUpgrade
+return {
+        name = "Speed Upgrade",
+        description = [[
+Speed = Speed * 1.2
+Return Speed +20%
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value * 1.2
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value / 1.2
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForFireRate
+return {
+        name = "Fire Rate Upgrade",
+        description = [[
+for(int i = 0, i < 10, i++){
+        FireRate = FireRate + 1
+}
+Return FireRate
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value + 10
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value - 10
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: DamageUpgrade
+return {
+        name = "Damage Upgrade",
+        description = [[
+Damage = Damage * 1.2
+Return Damage +20%
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value + 10
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value - 10
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+
+
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForSpeed
+return {
+        name = "For Loop - Speed",
+        description = [[
+for(int i = 0, i < 10, i++){
+        Speed = Speed + 1
+}
+Return Speed 
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value + 10
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value - 10
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForDamage
+return {
+        name = "For Loop - Damage",
+        description = [[
+for(int i = 0, i < 10, i++){
+        Damage = Damage + 1
+}
+Return Damage 
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value * 1.2
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value / 1.2
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: FireRateUpgrade
+return {
+        name = "Fire Rate Upgrade",
+        description = [[
+FireRate = FireRate * 1.2
+Return FireRate +20%
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value * 1.2
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value / 1.2
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+local messages = {
+        "Recursion is a way to think about solving a wide variety of problems.",
+        "It is used for sorting, solving mazes, and image compression, just to name a few.",
+        "To get used to the idea of recursion, let’s try sorting a stack of papers alphabetically using recursion",
+        "Imagine you have a really large stack of papers with names on them, all in a random order",
+        "If you were sorting the papers normally, you would go through the whole stack and find the first name, set it aside in the new sorted stack, then repeat until it was sorted.",
+        "But you have the power of recursion on your side.",
+        "You can just cut the unsorted stack into two equal stacks and pass them off to some friends, and have them sort it for you.",
+        "Those friends now have smaller but still quite large stacks of paper. This would still be a lot of work, but luckily, those friends know about recursion as well.",
+        "They also split their stacks in half and passed them to two of their friends.",
+        "This process goes on until eventually, one of the friends gets passed a stack of papers to sort, but it is only one piece of paper long.",
+        "A 1 paper stack is already sorted, so they pass their sorted stack up to their friend, and that friend passes it up to their friend, and so on until you get your sorted stack back.",
+        "That is the power of recursion"
+}
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  
+end
+
+
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui2
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+-- If there's no TextLabel, create one
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 16
+        textLabel.Parent = screenGui
+end
+
+
+-- Your sequence of messages about problem simplification
+local messages = {
+        "Now that you have a basic idea of what recursion can do, let’s figure out how it works.",
+        "Recursion can be broken down into 3 important steps: Base Case, Recursive Case, and Problem Simplification.",
+        "Let’s start with problem Simplification as it is the bedrock on which the rest of recursion is built. ",
+        "For recursion to work, there must be a way to take your problem and make it simpler. ",
+        "In the paper sorting example, the problem simplification step was splitting the stack into two halves.",
+        "If we did not simplify the problem, we would just be passing a large stack of papers to our friends, and it would never get easier for them to solve.",
+        "Every problem has a different way to be simplified, and some might even have multiple ways to be simplified.",
+        "The important thing is that if you are going to be solving a problem recursively, you need to simplify your problem at each step for it to work properly",
+        "Now we have \"Simplified\" the problem of understanding recursion and we can pass it along to the next door to continue "
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  -- Wait 3 seconds (adjust as needed)
+end
+
+
+-- Fade out animation
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+-- Hide or destroy the GUI
+screenGui.Enabled = false
+-- (Or use screenGui:Destroy() if you prefer removing it completely)
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui3
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+-- If there's no TextLabel, create one
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 16
+        textLabel.Parent = screenGui
+end
+
+
+-- More concise explanation using the building blocks example
+local messages = {
+        "Now that you have a grasp on problem simplification, let’s look at where that is used: the recursive case.",
+        "This is where a lot of the work gets done in recursion, which is where it gets its name from.",
+        "One of the important parts about simplifying a problem is that you don’t lose information.",
+        "This would be like throwing away the pieces of paper instead of passing them to a friend in the sorting example. ",
+        "The recursive case is that friend, it takes in the problem, simplifies it, then passes those simplified cases to its friends.",
+        "Looking at this from a coding point of view, recursion is a function that calls itself. ",
+        "An important thing to note is that for the recursive case, the logic is always the same for each recursive step.",
+        "For the paper sorting example, all friends split the stack in half and passed it off to two friends until it is sorted.",
+        "You don’t have a friend randomly making a bunch of paper airplanes out of his stack, each friend does the same thing, and has the same logic"
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  -- Wait 3 seconds (adjust as needed)
+end
+
+
+-- Fade out animation
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+-- Hide or destroy the GUI
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Create the main frame if it doesn't exist.
+
+
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Create a label to display the question.
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Create (or reuse) a Submit button.
+local submitButton = quizFrame:FindFirstChild("SubmitButton")
+if not submitButton then
+        submitButton = Instance.new("TextButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.Parent = quizFrame
+end
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Visible = true
+
+
+-- Enable the GUI.
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+
+
+--------------------------------------------------------------------------------
+
+
+
+
+local questions = {
+        {
+                questionText = "Recursion is...",
+                answers = {
+                        "A Cat",
+                        "A way to think about solving problems",--correct
+                        "A way to store data",
+                        "A programming language"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "What is a problem that can be solved by recursion",
+                answers = {
+                        "Sorting",  -- correct answer
+                        "Taxes",
+                        "1+2",
+                        "This question"
+                },
+                correctAnswer = 1
+        },
+        -- You can add more questions here in the same format.
+}
+
+
+--------------------------------------------------------------------------------
+-- Variables to keep track of the current question and selected answer.
+local currentQuestion = 1
+local selectedAnswer = nil
+
+
+-- A table to hold our answer buttons so we can clear them between questions.
+local answerButtons = {}
+
+
+-- Utility function to remove any previously created answer buttons.
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+-- Function to display a question based on the given index.
+local function displayQuestion(qIndex)
+        -- Clear any previous answer buttons.
+        clearAnswerButtons()
+
+
+        -- Reset any previously selected answer.
+        selectedAnswer = nil
+
+
+        -- Set the question text.
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        -- For each answer, create a button.
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                -- Calculate vertical position dynamically (starting a bit below the question).
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 20
+                button.TextWrapped = true
+                button.Text = answerText
+                button.Parent = quizFrame
+
+
+                -- When clicked, deselect others and set this one as the selected answer.
+                button.MouseButton1Click:Connect(function()
+                        -- Reset color for all answer buttons.
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                -- Save a reference to this button.
+                table.insert(answerButtons, button)
+        end
+
+
+        -- Remove any previous warning labels.
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+-- Initially display the first question.
+displayQuestion(currentQuestion)
+
+
+--------------------------------------------------------------------------------
+-- Function to display the result of the current question.
+local function displayResult(isCorrect)
+        -- hide old buttons
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        -- bigger frame
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Name = "ResultFrame"
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)       -- ↑ bumped from 0.4 to 0.5
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)  -- just tweak if you want vertically centered differently
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)         -- ↑ bumped from 0.6 to 0.7
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)   -- small top padding
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 24
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top  -- align at the top
+        -- optional: auto-shrink font if you still overflow
+        -- resultText.AutomaticSize = Enum.AutomaticSize.Y
+
+
+        if isCorrect then
+                resultText.Text = "Correct! " .. questions[currentQuestion].questionText .. "\nYour answer was right."
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+        else
+                local correctIndex = questions[currentQuestion].correctAnswer
+                local correctAnswerText = questions[currentQuestion].answers[correctIndex]
+                resultText.Text = "Incorrect.\nThe correct answer was: " .. correctAnswerText .. "."
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.15, 0)       -- slightly shorter height if you need more text space
+        continueButton.Position = UDim2.new(0.25, 0, 0.82, 0)  -- pushed down a bit
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local completeEvent = gui:FindFirstChild("QuizComplete")
+                                or Instance.new("RemoteEvent", gui)
+                        completeEvent.Name = "QuizComplete"
+                        completeEvent:FireServer(true)
+                end
+        end)
+end
+
+
+--------------------------------------------------------------------------------
+-- Handle submission when the player clicks the Submit button.
+submitButton.MouseButton1Click:Connect(function()
+        -- Ensure that an answer has been selected.
+        if selectedAnswer then
+                -- Check whether the selected answer is correct.
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+
+
+                -- Display the result (and eventually move to next question or finish the quiz).
+                displayResult(isCorrect)
+        else
+                -- If no answer was selected, display a warning message.
+                local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+                if not warningLabel then
+                        warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+--------------------------------------------------------------------------------
+-- Remove any emergency button if it exists (cleanup from previous iterations).
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end 
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Create the main frame if it doesn't exist.
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Create a label to display the question.
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Create (or reuse) a Submit button.
+local submitButton = quizFrame:FindFirstChild("SubmitButton")
+if not submitButton then
+        submitButton = Instance.new("TextButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.Parent = quizFrame
+end
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Visible = true
+
+
+-- Enable the GUI.
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+
+
+-- Define your list of questions about problem simplification
+local questions = {
+        {
+                questionText = "What does problem simplification in recursion",
+                answers = {
+                        "Making the code shorter",
+                        "Breaking down your problem into smaller parts", -- correct
+                        "Coming up with more problems to solve",
+                        "Removing all comments from code"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "What could the simplification step be in solving a maze",
+                answers = {
+                        "Not Solving it", 
+                        "Asking someone else to solve it",
+                        "Reducing the number of possible paths when a dead end is hit", -- correct
+                        "Following the right wall until you reach the exit"
+                },
+                correctAnswer = 3
+        }
+}
+
+
+-- Variables to keep track of the current question and selected answer.
+local currentQuestion = 1
+local selectedAnswer = nil
+
+
+-- A table to hold our answer buttons so we can clear them between questions.
+local answerButtons = {}
+
+
+-- Utility function to remove any previously created answer buttons.
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+-- Function to display a question based on the given index.
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0) 
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)  
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 16  -- Slightly smaller text to fit better
+                button.TextWrapped = true
+                button.Text = answerText
+                button.TextXAlignment = Enum.TextXAlignment.Center  -- Center text horizontally
+                button.TextYAlignment = Enum.TextYAlignment.Center  -- Center text vertically
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+-- Initially display the first question.
+displayQuestion(currentQuestion)
+
+
+-- Function to display the result of the current question.
+local function displayResult(isCorrect)
+        -- remove old buttons
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        -- grow the result frame vertically
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Name = "ResultFrame"
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)               -- ↑ from 0.4 → 0.5
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Name = "ResultText"
+        resultText.Parent = resultFrame
+        resultText.BackgroundTransparency = 1
+        resultText.Size = UDim2.new(0.9, 0, 0, 0)                    -- height will auto-size
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.TextSize = 20                                    -- slightly smaller
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top         -- top-align so nothing is clipped
+        resultText.AutomaticSize = Enum.AutomaticSize.Y             -- grow to fit all lines
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\nYour answer was right."
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local correctIndex = questions[currentQuestion].correctAnswer
+                local correctAnswerText = questions[currentQuestion].answers[correctIndex]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. correctAnswerText
+        end
+
+
+        -- move the Continue button below the text
+        local continueButton = Instance.new("TextButton")
+        continueButton.Name = "ContinueButton"
+        continueButton.Parent = resultFrame
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Size = UDim2.new(0.5, 0, 0.15, 0)
+        continueButton.Position = UDim2.new(0.25, 0,
+                resultText.AbsoluteSize.Y / resultFrame.AbsoluteSize.Y + 0.08, 0)
+        -- this lines it up right beneath the auto-sized text
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local completeEvent = gui:FindFirstChild("QuizComplete")
+                                or Instance.new("RemoteEvent", gui)
+                        completeEvent.Name = "QuizComplete"
+                        completeEvent.Parent = gui
+                        completeEvent:FireServer(true)
+                end
+        end)
+end
+
+
+-- Handle submission when the player clicks the Submit button.
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+                if not warningLabel then
+                        warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+-- Remove any emergency button if it exists (cleanup from previous iterations).
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") or (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") then
+                child:Destroy()
+        end
+end
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.2, 0)  -- Taller for text
+questionLabel.Position = UDim2.new(0.05, 0, 0.02, 0)  -- Slightly higher
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 20  -- Slightly smaller text
+questionLabel.TextWrapped = true
+questionLabel.TextYAlignment = Enum.TextYAlignment.Center  -- Center text vertically
+questionLabel.Parent = quizFrame
+
+
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+submitButton.Visible = true
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+local questions = {
+        {
+                questionText = "From a programming point of view,\n what is recursion?",
+                answers = {
+                        "A stack overflow",
+                        "A function that calls itself",
+                        "Praying to the Machine spirit that your code compiles"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "Do all instances of the recursive case\n need to have the same logic?",
+                answers = {
+                        "Yes",
+                        "No",
+                        "I want to pick this to be funny (you will get the question wrong)"
+                },
+                correctAnswer = 1
+        }
+}
+
+
+
+
+local currentQuestion = 1
+local selectedAnswer = nil
+local answerButtons = {}
+
+
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                button.Position = UDim2.new(0.05, 0, 0.3 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 20
+                button.TextWrapped = true
+                button.Text = answerText
+                button.TextXAlignment = Enum.TextXAlignment.Center
+                button.TextYAlignment = Enum.TextYAlignment.Center
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+displayQuestion(currentQuestion)
+
+
+local function displayResult(isCorrect)
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 22
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\n" .. questions[currentQuestion].questionText
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQuestion].answers[questions[currentQuestion].correctAnswer]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.2, 0)
+        continueButton.Position = UDim2.new(0.25, 0, 0.8, 0)
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: UpgradeManager
+-- In ReplicatedStorage, create a new ModuleScript called "UpgradeManager"
+local UpgradeManager = {}
+
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechEvents = ReplicatedStorage:WaitForChild("MechEvents")
+local UnlockUpgradeEvent = MechEvents:WaitForChild("UnlockUpgradeEvent")
+local CodeBlocks = ReplicatedStorage:WaitForChild("CodeBlocks")
+local CodeBlocksDX = ReplicatedStorage:WaitForChild("CodeBlocksDX")
+
+
+-- Track unlocked upgrades
+local unlockedUpgrades = {}
+
+
+function UpgradeManager.UnlockRandomUpgrade(player)
+        -- Get all possible upgrades
+        local allUpgrades = {}
+        for _, codeBlock in pairs(CodeBlocks:GetChildren()) do
+                if codeBlock:IsA("ModuleScript") and not unlockedUpgrades[codeBlock.Name] then
+                        table.insert(allUpgrades, codeBlock.Name)
+                end
+        end
+
+
+        if #allUpgrades == 0 then
+                warn("No more upgrades to unlock!")
+                return
+        end
+
+
+        -- Select random upgrade
+        local randomIndex = math.random(1, #allUpgrades)
+        local upgradeName = allUpgrades[randomIndex]
+        unlockedUpgrades[upgradeName] = true
+
+
+        -- Notify client
+        UnlockUpgradeEvent:FireClient(player, upgradeName)
+        print("Unlocked upgrade:", upgradeName)
+        return upgradeName
+end
+
+
+function UpgradeManager.UnlockRandomUpgradeDX(player)
+        -- Get all possible upgrades
+        local allUpgradesDX = {}
+        for _, codeBlockDX in pairs(CodeBlocksDX:GetChildren()) do
+                if codeBlockDX:IsA("ModuleScript") and not unlockedUpgrades[codeBlockDX.Name] then
+                        table.insert(allUpgradesDX, codeBlockDX.Name)
+                end
+        end
+
+
+        if #allUpgradesDX == 0 then
+                warn("No more upgrades to unlock!")
+                return
+        end
+
+
+        -- Select random upgrade
+        local randomIndex = math.random(1, #allUpgradesDX)
+        local upgradeName = allUpgradesDX[randomIndex]
+        unlockedUpgrades[upgradeName] = true
+
+
+        -- Notify client
+        UnlockUpgradeEvent:FireClient(player, upgradeName)
+        print("Unlocked upgrade:", upgradeName)
+        return upgradeName
+end
+
+
+return UpgradeManager
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui4
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+-- Shorter, simpler messages about recursion vs loops
+local messages = {
+        "Now we reach the base case in our explanation of recursion.",
+        "The base case is the simplest a problem can be and is the end of our recursion.",
+        "This is like when we only have one piece of paper left in the sorting example.",
+        "Like all other parts of recursion, the base case will look different for different problems, but it always needs to be there.",
+        "If we had not had the base case in the sorting example, the friend would have ripped that one piece of paper in half and passed it along.",
+        "If you do not have a base case, you will fall into infinite recursion, in which your program never ends.",
+        "Once the base case is hit, you return the simplest case, and that data can be processed to get your desired outcome.",
+        "For the paper sorting example again, this is passing the paper back up the chain of friends, sorting it along the way until it reaches you. "
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(3)  
+end
+
+
+-- Fade out the text
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui5
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+local messages = {
+        "Now that you have learned about all of the different parts of recursion, let’s explore how this game actually models recursion.",
+        "Believe it or not, the way you’re going through the levels of the game has modeled a type of recursive search called Depth First Search, or DFS.",
+        "In this specific DFS, you are finding your way around by trying the rightmost door in each room every time.",
+        "The problem simplification is that once a door has been opened, you no longer need to check it, reducing the total number of doors to check.",
+        "In the recursive case, once you enter a room, go through the rightmost door that has not been opened.",
+        "The base case is that if there are no more doors to check, you can go back to the previous room. ",
+        "This is a standard searching algorithm for a data type called a tree.",
+        "But that is not the only thing in this game that resembles recursion.",
+        "After the next quiz, you will find the final boss of the game.",
+        "This boss represents the problem simplification stage that we talked about earlier.",
+        "Each time you kill it, it comes back at half the size, half the health, and half the damage as before until you reach its base case. ",
+        "Another important thing to note is the difference between recursion and loops.",
+        "These two concepts are similar, and they do have a lot of overlap in what they can solve as seen in the sorting example",
+        "The important difference comes down to how you look at the problem and how you want to solve it",
+        "Loops lend themselves better for simpler problems and are quicker to write in these instances but as the problem gets more complex recursion becomes the easier option. ",
+        "We hope you have enjoyed this exploration of recursion and have been inspired to look more into recursion or any other coding topic.",
+        "Most importantly, we hope you have been having fun!"
+}
+
+
+for _, msg in ipairs(messages) do
+        textLabel.Text = msg
+        task.wait(4)
+end
+
+
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Clean up old buttons/labels
+for _, child in pairs(gui:GetChildren()) do
+        if (child:IsA("TextButton") and child.Name ~= "SubmitButton") or
+                (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") or
+                (child:IsA("Frame") and child.Name ~= "QuizFrame") then
+                child:Destroy()
+        end
+end
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") and (child.Name == "Button" or not child.Name:find("Submit") and not child.Name:find("Answer")) then
+                child:Destroy()
+        end
+end
+
+
+-- Main quiz frame
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Question label
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Submit button
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+
+
+-- Only first and last questions
+local questions = {
+        {
+                questionText = "The boss in the next room represents",
+                answers = {"You", "The Indomitable Human Spirit ", "Problem Simplification", "Base Case"},
+                correctAnswer = 3
+        },
+        {
+                questionText = "The level structure in this game represents",
+                answers = {
+                        "A tree",
+                        "The rise of AI",
+                        "How confused I am",
+                        "A root"
+                },
+                correctAnswer = 1
+        }
+}
+
+
+local currentQ = 1
+local selected = nil
+local btns = {}
+
+
+local function clearButtons()
+        for _, b in ipairs(btns) do
+                if b.Parent then b:Destroy() end
+        end
+        btns = {}
+end
+
+
+local function showQuestion(idx)
+        clearButtons()
+        selected = nil
+        questionLabel.Text = questions[idx].questionText
+
+
+        for i, ans in ipairs(questions[idx].answers) do
+                local b = Instance.new("TextButton")
+                b.Name = "Answer" .. i
+                b.Size = UDim2.new(0.9, 0, 0.12, 0)
+                b.Position = UDim2.new(0.05, 0, 0.25 + (i - 1) * 0.15, 0)
+                b.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                b.TextSize = 20
+                b.TextWrapped = true
+                b.Text = ans
+                b.Parent = quizFrame
+
+
+                b.MouseButton1Click:Connect(function()
+                        for _, pb in ipairs(btns) do pb.BackgroundColor3 = Color3.fromRGB(200, 200, 200) end
+                        b.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selected = i
+                end)
+
+
+                table.insert(btns, b)
+        end
+
+
+        local wl = quizFrame:FindFirstChild("WarningLabel")
+        if wl then wl:Destroy() end
+end
+
+
+showQuestion(currentQ)
+
+
+local function showResult(isCorrect)
+        clearButtons()
+        submitButton.Visible = false
+
+
+        local rf = Instance.new("Frame")
+        rf.Size = UDim2.new(0.7, 0, 0.5, 0)
+        rf.Position = UDim2.new(0.15, 0, 0.25, 0)
+        rf.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        rf.Parent = gui
+
+
+        local rt = Instance.new("TextLabel")
+        rt.Size = UDim2.new(0.9, 0, 0.7, 0)
+        rt.Position = UDim2.new(0.05, 0, 0.05, 0)
+        rt.BackgroundTransparency = 1
+        rt.TextSize = 22
+        rt.TextWrapped = true
+        rt.TextYAlignment = Enum.TextYAlignment.Top
+        rt.Parent = rf
+
+
+        if isCorrect then
+                rt.TextColor3 = Color3.fromRGB(0, 150, 0)
+                rt.Text = "Correct!\n" .. questions[currentQ].questionText
+        else
+                rt.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQ].answers[questions[currentQ].correctAnswer]
+                rt.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+
+
+        local cb = Instance.new("TextButton")
+        cb.Size = UDim2.new(0.5, 0, 0.2, 0)
+        cb.Position = UDim2.new(0.25, 0, 0.8, 0)
+        cb.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        cb.TextSize = 24
+        cb.Text = "Continue"
+        cb.Parent = rf
+
+
+        cb.MouseButton1Click:Connect(function()
+                rf:Destroy()
+                if currentQ < #questions then
+                        currentQ += 1
+                        submitButton.Visible = true
+                        showQuestion(currentQ)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selected then
+                showResult(selected == questions[currentQ].correctAnswer)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local wl = Instance.new("TextLabel")
+                        wl.Name = "WarningLabel"
+                        wl.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        wl.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        wl.BackgroundTransparency = 1
+                        wl.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        wl.TextSize = 20
+                        wl.Text = "Please select an answer!"
+                        wl.Parent = quizFrame
+                end
+        end
+end)
+
+
+-- Remove any old emergency button
+local em = gui:FindFirstChild("I'm Done (Emergency Button)")
+if em then em:Destroy() end
+
+
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: SpeedUpgradeDX
+return {
+        name = "Speed Upgrade DX",
+        description = [[
+Speed = Speed * 1.5
+Return Speed +50%
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value * 1.5
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value / 1.5
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: FireRateUpgradeDX
+return {
+        name = "Fire Rate Upgrade DX",
+        description = [[
+FireRate = FireRate * 1.5
+Return FireRate +50%
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value * 1.5
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value / 1.5
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: DamageUpgradeDX
+return {
+        name = "Damage Upgrade DX",
+        description = [[
+Damage = Damage * 1.5
+Return Damage +50%
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value * 1.5
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value / 1.5
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Clean up old elements
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") or (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") then
+                child:Destroy()
+        end
+end
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") and (child.Name == "Button" or not child.Name:find("Submit") and not child.Name:find("Answer")) then
+                child:Destroy()
+        end
+end
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 20  -- Reduced text size
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+
+
+local questions = {
+        {
+                questionText = "What is the base case telling the recursive program",
+                answers = {
+                        "Invest in the stock marker",
+                        "99% of programs stop right before they solve their problem",
+                        "Wait for all the other recursive branches to catch up",
+                        "STOP"
+                },
+                correctAnswer = 4
+        },
+        {
+                questionText = "What happens if there is no base case",
+                answers = {
+                        "The program is no longer based",
+                        "Infinite recursion",
+                        "The computer restarts out of spite",
+                        "Nobody has ever tried that"
+                },
+                correctAnswer = 2
+        }
+}
+
+
+local currentQuestion = 1
+local selectedAnswer = nil
+local answerButtons = {}
+
+
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 18  -- Reduced text size
+                button.TextWrapped = true
+                button.Text = answerText
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+displayQuestion(currentQuestion)
+
+
+local function displayResult(isCorrect)
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 20
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\n" .. questions[currentQuestion].questionText
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQuestion].answers[questions[currentQuestion].correctAnswer]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.2, 0)
+        continueButton.Position = UDim2.new(0.25, 0, 0.8, 0)
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
+
+
+
+
+BossMessageEvent.OnServerEvent:Connect(function(player)
+        -- Basic validation
+        if not player.Character then return end
+        local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+
+
+        -- Optional position check
+        local room = workspace:FindFirstChild("room 1")
+        if not room then return end
+        local floorPart = room:FindFirstChild("floorpart")
+        if not floorPart then return end
+
+
+        if (rootPart.Position - floorPart.Position).Magnitude > 50 then
+                warn("Player too far from floorpart:", player.Name)
+                return
+        end
+
+
+        -- Confirm message
+        BossMessageEvent:FireClient(player)
+end)
+---------
+Folder: ServerScriptService - Type: Script - Name: UpgradeEvent
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechEvents = ReplicatedStorage:WaitForChild("MechEvents")
+local UpgradeEvent = MechEvents:WaitForChild("UpgradeEvent")
+local RevertUpgradeEvent = MechEvents:WaitForChild("RevertUpgradeEvent")
+local UpgradeEventDX = MechEvents:WaitForChild("UpgradeEventDX")
+local RevertUpgradeEventDX = MechEvents:WaitForChild("RevertUpgradeEventDX")
+local UnlockUpgradeEvent = MechEvents:WaitForChild("UnlockUpgradeEvent")
+local RequestUpgradeEvent = MechEvents:WaitForChild("RequestUpgradeEvent")
+local RequestUpgradeEventDX = MechEvents:WaitForChild("RequestUpgradeEventDX")
+
+
+local CodeBlocks = ReplicatedStorage:WaitForChild("CodeBlocks")
+local UpgradeManager = require(ReplicatedStorage:WaitForChild("UpgradeManager")) -- Your module script
+
+
+--Function to apply an upgrade
+UpgradeEvent.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlock = ReplicatedStorage.CodeBlocks:FindFirstChild(codeBlockName)
+                if codeBlock and codeBlock:IsA("ModuleScript") then
+                        local upgrade = require(codeBlock)
+                        upgrade.apply(mech)
+                        print("Upgrade applied:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to revert an upgrade
+RevertUpgradeEvent.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlock = ReplicatedStorage.CodeBlocks:FindFirstChild(codeBlockName)
+                if codeBlock and codeBlock:IsA("ModuleScript") then
+                        local upgrade = require(codeBlock)
+                        upgrade.revert(mech)
+                        print("Upgrade reverted:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to apply a DX upgrade
+UpgradeEventDX.OnServerEvent:Connect(function(player, codeBlockName)
+        print("dx event fired")
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlockDX = ReplicatedStorage.CodeBlocksDX:FindFirstChild(codeBlockName)
+                if codeBlockDX and codeBlockDX:IsA("ModuleScript") then
+                        local upgrade = require(codeBlockDX)
+                        upgrade.apply(mech)
+                        print("Upgrade applied:", codeBlockName)
+                end
+        end
+end)
+
+
+-- Function to revert a DX upgrade
+RevertUpgradeEventDX.OnServerEvent:Connect(function(player, codeBlockName)
+        local mech = workspace:FindFirstChild("PLAYERMECH")
+        if mech and mech:FindFirstChild("Humanoid") and mech.Humanoid.Health > 0 then
+                local codeBlockDX = ReplicatedStorage.CodeBlocksDX:FindFirstChild(codeBlockName)
+                if codeBlockDX and codeBlockDX:IsA("ModuleScript") then
+                        local upgrade = require(codeBlockDX)
+                        upgrade.revert(mech)
+                        print("Upgrade reverted:", codeBlockName)
+                end
+        end
+end)
+
+
+-- New: Handle proximity prompt upgrade requests
+RequestUpgradeEvent.OnServerEvent:Connect(function(player)
+        local upgradeName = UpgradeManager.UnlockRandomUpgrade(player)
+        if upgradeName then
+                UnlockUpgradeEvent:FireClient(player, upgradeName)
+        end
+end)
+
+
+RequestUpgradeEventDX.OnServerEvent:Connect(function(player)
+        local upgradeName = UpgradeManager.UnlockRandomUpgradeDX(player)
+        if upgradeName then
+                UnlockUpgradeEvent:FireClient(player, upgradeName)
+        end
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: LocalScript
+
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+
+local function lockCharacter()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+
+
+        humanoid.WalkSpeed = 0
+        humanoid.JumpPower = 0
+end
+
+
+local function unlockCharacter()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:WaitForChild("Humanoid")
+
+
+        humanoid.WalkSpeed = 16
+        humanoid.JumpPower = 50
+end
+
+
+-- Lock at game start
+lockCharacter()
+
+
+-- Unlock when text finishes (adjust timing to match your text duration)
+task.wait(1) -- 5 messages * 5 seconds each
+unlockCharacter()
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: CameraControl
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local seat = workspace.PLAYERMECH:WaitForChild("VehicleSeat")
+local mech = seat.Parent
+
+
+-- Camera settings
+local CAMERA_OFFSET = Vector3.new(10, 30, 10) -- Third-person view behind mech
+local MOUSE_SENSITIVITY = 0.5 -- Adjust for faster/slower rotation
+local camera = workspace.CurrentCamera
+
+
+-- Track mouse rotation
+local pitch = 0 -- Vertical rotation (up/down)
+local yaw = 0 -- Horizontal rotation (left/right)
+
+
+-- Capture mouse movement
+UserInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+                yaw = yaw - input.Delta.X * MOUSE_SENSITIVITY
+                pitch = math.clamp(pitch - input.Delta.Y * MOUSE_SENSITIVITY, -80, 80)
+        end
+end)
+
+
+-- Update camera every frame
+RunService.RenderStepped:Connect(function()
+        if seat.Occupant and seat.Occupant.Parent == player.Character then
+                -- Get mech's position (but ignore its rotation)
+                local hrp=mech.HumanoidRootPart
+                local hrpc=hrp.CFrame
+                local mechPosition = mech.HumanoidRootPart.Position
+                mechPosition= mechPosition+Vector3.new(15,15,5)
+                -- Calculate camera rotation from mouse input
+                local cameraRotation = CFrame.Angles(0, math.rad(yaw), 0) * CFrame.Angles(math.rad(pitch), 0, 0)
+                local off=hrpc:VectorToWorldSpace(cameraRotation*CAMERA_OFFSET)
+                -- Position camera behind mech with manual rotation
+                camera.CFrame = CFrame.new(mechPosition + cameraRotation * CAMERA_OFFSET, mechPosition)
+        end
+end)
+seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+        if not seat.Occupant then
+                camera.CameraType = Enum.CameraType.Custom
+        end
+end)
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: MechScript
+-- LocalScript (StarterPlayerScripts/MechControls)
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechMoveEvent = ReplicatedStorage:WaitForChild("MechEvents"):WaitForChild("MechMoveEvent")
+
+
+local function getCameraRelativeDirection()
+        local camera = workspace.CurrentCamera
+        local lookVector = camera.CFrame.LookVector-- Forward direction
+        local rightVector = camera.CFrame.RightVector -- Right direction
+
+
+        -- Fixed input handling
+        local forward = (UserInputService:IsKeyDown(Enum.KeyCode.W) and 1 or 0)
+        local backward = (UserInputService:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+        local left = (UserInputService:IsKeyDown(Enum.KeyCode.A) and 1 or 0)
+        local right = (UserInputService:IsKeyDown(Enum.KeyCode.D) and 1 or 0)
+
+
+        -- Combine directions
+        local direction = (lookVector * (forward - backward)) + (rightVector * (right - left))
+        return direction.Unit -- Normalized direction
+end
+
+
+-- Send input 60 times/sec
+game:GetService("RunService").Heartbeat:Connect(function()
+        local direction = getCameraRelativeDirection()
+        MechMoveEvent:FireServer(direction)
+end)
+
+
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: LocalAim
+-- LocalScript (StarterPlayerScripts/LocalAim)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local MechRotateTorsoEvent = ReplicatedStorage:WaitForChild("MechAimEvent")
+local mech = workspace:WaitForChild("PLAYERMECH")
+local seat = mech:WaitForChild("VehicleSeat")
+
+
+RunService.Heartbeat:Connect(function()
+        if seat.Occupant and seat.Occupant.Parent == player.Character then
+                local camera = workspace.CurrentCamera
+                local cameraCFrame = camera.CFrame
+                local pitch, yaw, roll = cameraCFrame:ToEulerAnglesYXZ()
+                MechRotateTorsoEvent:FireServer(
+                        math.deg(pitch),  -- X-axis rotation (up/down)
+                        math.deg(yaw),    -- Y-axis rotation (left/right)
+                        math.deg(roll)    -- Z-axis rotation (tilt)
+                )
+        end
+end)
+
+
+
+
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: BossTriggerDetector
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
+local player = Players.LocalPlayer
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+
+
+-- Configuration
+local ROOM_NAME = "room 1"
+local FLOOR_PART_NAME = "floorpart"
+local TRIGGER_HEIGHT = 2 -- Units above floor
+local TRIGGER_PADDING = 5
+
+
+-- Find room and floor part
+local room = workspace:FindFirstChild(ROOM_NAME)
+if not room then
+        warn("Room not found:", ROOM_NAME)
+        return
+end
+
+
+local floorPart = room:FindFirstChild(FLOOR_PART_NAME)
+if not floorPart then
+        warn(FLOOR_PART_NAME, "missing in", ROOM_NAME)
+        return
+end
+
+
+-- Create visible trigger
+local trigger = Instance.new("Part")
+trigger.Name = "Room1Trigger"
+trigger.Size = floorPart.Size + Vector3.new(TRIGGER_PADDING, TRIGGER_HEIGHT, TRIGGER_PADDING)
+trigger.Position = floorPart.Position + Vector3.new(0, TRIGGER_HEIGHT/2, 0)
+trigger.Transparency = 0.7
+trigger.Color = Color3.new(1, 0, 0) -- Red = inactive
+trigger.Anchored = true
+trigger.CanCollide = false
+trigger.Parent = workspace
+
+
+-- Detection system
+game:GetService("RunService").Heartbeat:Connect(function()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local rootPart = character:WaitForChild("HumanoidRootPart")
+
+
+        if (rootPart.Position - trigger.Position).Magnitude < (trigger.Size.X/2) then
+                BossMessageEvent:FireServer()
+                trigger.Color = Color3.new(0, 1, 0) -- Green = active
+                task.wait(1)
+                trigger.Color = Color3.new(1, 0, 0)
+        end
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: BossMessageGUI
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
+local player = Players.LocalPlayer
+local BossMessageEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BossMessageEvent")
+
+
+-- GUI Setup
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BossWarning"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(0.8, 0, 0.15, 0)
+textLabel.Position = UDim2.new(0.1, 0, 0.3, 0)
+textLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+textLabel.BackgroundTransparency = 0.7
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.Text = "WARNING: Combat Zone Ahead!\nPrepare for battle!"
+textLabel.TextSize = 28
+textLabel.Visible = false
+textLabel.ZIndex = 1000
+textLabel.Font = Enum.Font.GothamBold
+textLabel.TextWrapped = true
+textLabel.Parent = screenGui
+
+
+-- Message display
+BossMessageEvent.OnClientEvent:Connect(function()
+        textLabel.Visible = true
+        textLabel.TextTransparency = 0
+
+
+        -- Fade out after 5 seconds
+        for i = 1, 10 do
+                textLabel.TextTransparency = i * 0.1
+                task.wait(0.5)
+        end
+
+
+        textLabel.Visible = false
+end)
+---------
+Folder: StarterPlayerScripts - Type: LocalScript - Name: weapon
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local FireWeaponEvent = ReplicatedStorage:WaitForChild("MechEvents"):WaitForChild("FireWeaponEvent")
+
+
+local seat = workspace.PLAYERMECH:WaitForChild("VehicleSeat")
+
+
+UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.Return then
+                if seat.Occupant and seat.Occupant.Parent == game.Players.LocalPlayer.Character then
+                        print("shoot")
+                        FireWeaponEvent:FireServer()
+                end
+        end
+end)
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: SpeedUpgrade
+return {
+        name = "Speed Upgrade",
+        description = [[
+Speed = Speed * 1.2
+Return Speed +20%
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value * 1.2
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value / 1.2
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForFireRate
+return {
+        name = "Fire Rate Upgrade",
+        description = [[
+for(int i = 0, i < 10, i++){
+        FireRate = FireRate + 1
+}
+Return FireRate
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value + 10
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value - 10
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: DamageUpgrade
+return {
+        name = "Damage Upgrade",
+        description = [[
+Damage = Damage * 1.2
+Return Damage +20%
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value + 10
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value - 10
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+
+
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForSpeed
+return {
+        name = "For Loop - Speed",
+        description = [[
+for(int i = 0, i < 10, i++){
+        Speed = Speed + 1
+}
+Return Speed 
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value + 10
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value - 10
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: ForDamage
+return {
+        name = "For Loop - Damage",
+        description = [[
+for(int i = 0, i < 10, i++){
+        Damage = Damage + 1
+}
+Return Damage 
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value * 1.2
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value / 1.2
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: FireRateUpgrade
+return {
+        name = "Fire Rate Upgrade",
+        description = [[
+FireRate = FireRate * 1.2
+Return FireRate +20%
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value * 1.2
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value / 1.2
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+local messages = {
+        "Recursion is a way to think about solving a wide variety of problems.",
+        "It is used for sorting, solving mazes, and image compression, just to name a few.",
+        "To get used to the idea of recursion, let’s try sorting a stack of papers alphabetically using recursion",
+        "Imagine you have a really large stack of papers with names on them, all in a random order",
+        "If you were sorting the papers normally, you would go through the whole stack and find the first name, set it aside in the new sorted stack, then repeat until it was sorted.",
+        "But you have the power of recursion on your side.",
+        "You can just cut the unsorted stack into two equal stacks and pass them off to some friends, and have them sort it for you.",
+        "Those friends now have smaller but still quite large stacks of paper. This would still be a lot of work, but luckily, those friends know about recursion as well.",
+        "They also split their stacks in half and passed them to two of their friends.",
+        "This process goes on until eventually, one of the friends gets passed a stack of papers to sort, but it is only one piece of paper long.",
+        "A 1 paper stack is already sorted, so they pass their sorted stack up to their friend, and that friend passes it up to their friend, and so on until you get your sorted stack back.",
+        "That is the power of recursion"
+}
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  
+end
+
+
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui2
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+-- If there's no TextLabel, create one
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 16
+        textLabel.Parent = screenGui
+end
+
+
+-- Your sequence of messages about problem simplification
+local messages = {
+        "Now that you have a basic idea of what recursion can do, let’s figure out how it works.",
+        "Recursion can be broken down into 3 important steps: Base Case, Recursive Case, and Problem Simplification.",
+        "Let’s start with problem Simplification as it is the bedrock on which the rest of recursion is built. ",
+        "For recursion to work, there must be a way to take your problem and make it simpler. ",
+        "In the paper sorting example, the problem simplification step was splitting the stack into two halves.",
+        "If we did not simplify the problem, we would just be passing a large stack of papers to our friends, and it would never get easier for them to solve.",
+        "Every problem has a different way to be simplified, and some might even have multiple ways to be simplified.",
+        "The important thing is that if you are going to be solving a problem recursively, you need to simplify your problem at each step for it to work properly",
+        "Now we have \"Simplified\" the problem of understanding recursion and we can pass it along to the next door to continue "
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  -- Wait 3 seconds (adjust as needed)
+end
+
+
+-- Fade out animation
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+-- Hide or destroy the GUI
+screenGui.Enabled = false
+-- (Or use screenGui:Destroy() if you prefer removing it completely)
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui3
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+
+
+-- If there's no TextLabel, create one
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 16
+        textLabel.Parent = screenGui
+end
+
+
+-- More concise explanation using the building blocks example
+local messages = {
+        "Now that you have a grasp on problem simplification, let’s look at where that is used: the recursive case.",
+        "This is where a lot of the work gets done in recursion, which is where it gets its name from.",
+        "One of the important parts about simplifying a problem is that you don’t lose information.",
+        "This would be like throwing away the pieces of paper instead of passing them to a friend in the sorting example. ",
+        "The recursive case is that friend, it takes in the problem, simplifies it, then passes those simplified cases to its friends.",
+        "Looking at this from a coding point of view, recursion is a function that calls itself. ",
+        "An important thing to note is that for the recursive case, the logic is always the same for each recursive step.",
+        "For the paper sorting example, all friends split the stack in half and passed it off to two friends until it is sorted.",
+        "You don’t have a friend randomly making a bunch of paper airplanes out of his stack, each friend does the same thing, and has the same logic"
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(4)  -- Wait 3 seconds (adjust as needed)
+end
+
+
+-- Fade out animation
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+-- Hide or destroy the GUI
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Create the main frame if it doesn't exist.
+
+
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Create a label to display the question.
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Create (or reuse) a Submit button.
+local submitButton = quizFrame:FindFirstChild("SubmitButton")
+if not submitButton then
+        submitButton = Instance.new("TextButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.Parent = quizFrame
+end
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Visible = true
+
+
+-- Enable the GUI.
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+
+
+--------------------------------------------------------------------------------
+
+
+
+
+local questions = {
+        {
+                questionText = "Recursion is...",
+                answers = {
+                        "A Cat",
+                        "A way to think about solving problems",--correct
+                        "A way to store data",
+                        "A programming language"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "What is a problem that can be solved by recursion",
+                answers = {
+                        "Sorting",  -- correct answer
+                        "Taxes",
+                        "1+2",
+                        "This question"
+                },
+                correctAnswer = 1
+        },
+        -- You can add more questions here in the same format.
+}
+
+
+--------------------------------------------------------------------------------
+-- Variables to keep track of the current question and selected answer.
+local currentQuestion = 1
+local selectedAnswer = nil
+
+
+-- A table to hold our answer buttons so we can clear them between questions.
+local answerButtons = {}
+
+
+-- Utility function to remove any previously created answer buttons.
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+-- Function to display a question based on the given index.
+local function displayQuestion(qIndex)
+        -- Clear any previous answer buttons.
+        clearAnswerButtons()
+
+
+        -- Reset any previously selected answer.
+        selectedAnswer = nil
+
+
+        -- Set the question text.
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        -- For each answer, create a button.
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                -- Calculate vertical position dynamically (starting a bit below the question).
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 20
+                button.TextWrapped = true
+                button.Text = answerText
+                button.Parent = quizFrame
+
+
+                -- When clicked, deselect others and set this one as the selected answer.
+                button.MouseButton1Click:Connect(function()
+                        -- Reset color for all answer buttons.
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                -- Save a reference to this button.
+                table.insert(answerButtons, button)
+        end
+
+
+        -- Remove any previous warning labels.
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+-- Initially display the first question.
+displayQuestion(currentQuestion)
+
+
+--------------------------------------------------------------------------------
+-- Function to display the result of the current question.
+local function displayResult(isCorrect)
+        -- hide old buttons
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        -- bigger frame
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Name = "ResultFrame"
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)       -- ↑ bumped from 0.4 to 0.5
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)  -- just tweak if you want vertically centered differently
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)         -- ↑ bumped from 0.6 to 0.7
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)   -- small top padding
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 24
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top  -- align at the top
+        -- optional: auto-shrink font if you still overflow
+        -- resultText.AutomaticSize = Enum.AutomaticSize.Y
+
+
+        if isCorrect then
+                resultText.Text = "Correct! " .. questions[currentQuestion].questionText .. "\nYour answer was right."
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+        else
+                local correctIndex = questions[currentQuestion].correctAnswer
+                local correctAnswerText = questions[currentQuestion].answers[correctIndex]
+                resultText.Text = "Incorrect.\nThe correct answer was: " .. correctAnswerText .. "."
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.15, 0)       -- slightly shorter height if you need more text space
+        continueButton.Position = UDim2.new(0.25, 0, 0.82, 0)  -- pushed down a bit
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local completeEvent = gui:FindFirstChild("QuizComplete")
+                                or Instance.new("RemoteEvent", gui)
+                        completeEvent.Name = "QuizComplete"
+                        completeEvent:FireServer(true)
+                end
+        end)
+end
+
+
+--------------------------------------------------------------------------------
+-- Handle submission when the player clicks the Submit button.
+submitButton.MouseButton1Click:Connect(function()
+        -- Ensure that an answer has been selected.
+        if selectedAnswer then
+                -- Check whether the selected answer is correct.
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+
+
+                -- Display the result (and eventually move to next question or finish the quiz).
+                displayResult(isCorrect)
+        else
+                -- If no answer was selected, display a warning message.
+                local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+                if not warningLabel then
+                        warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+--------------------------------------------------------------------------------
+-- Remove any emergency button if it exists (cleanup from previous iterations).
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end 
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Create the main frame if it doesn't exist.
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Create a label to display the question.
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Create (or reuse) a Submit button.
+local submitButton = quizFrame:FindFirstChild("SubmitButton")
+if not submitButton then
+        submitButton = Instance.new("TextButton")
+        submitButton.Name = "SubmitButton"
+        submitButton.Parent = quizFrame
+end
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Visible = true
+
+
+-- Enable the GUI.
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+
+
+-- Define your list of questions about problem simplification
+local questions = {
+        {
+                questionText = "What does problem simplification in recursion",
+                answers = {
+                        "Making the code shorter",
+                        "Breaking down your problem into smaller parts", -- correct
+                        "Coming up with more problems to solve",
+                        "Removing all comments from code"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "What could the simplification step be in solving a maze",
+                answers = {
+                        "Not Solving it", 
+                        "Asking someone else to solve it",
+                        "Reducing the number of possible paths when a dead end is hit", -- correct
+                        "Following the right wall until you reach the exit"
+                },
+                correctAnswer = 3
+        }
+}
+
+
+-- Variables to keep track of the current question and selected answer.
+local currentQuestion = 1
+local selectedAnswer = nil
+
+
+-- A table to hold our answer buttons so we can clear them between questions.
+local answerButtons = {}
+
+
+-- Utility function to remove any previously created answer buttons.
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+-- Function to display a question based on the given index.
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0) 
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)  
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 16  -- Slightly smaller text to fit better
+                button.TextWrapped = true
+                button.Text = answerText
+                button.TextXAlignment = Enum.TextXAlignment.Center  -- Center text horizontally
+                button.TextYAlignment = Enum.TextYAlignment.Center  -- Center text vertically
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+-- Initially display the first question.
+displayQuestion(currentQuestion)
+
+
+-- Function to display the result of the current question.
+local function displayResult(isCorrect)
+        -- remove old buttons
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        -- grow the result frame vertically
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Name = "ResultFrame"
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)               -- ↑ from 0.4 → 0.5
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Name = "ResultText"
+        resultText.Parent = resultFrame
+        resultText.BackgroundTransparency = 1
+        resultText.Size = UDim2.new(0.9, 0, 0, 0)                    -- height will auto-size
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.TextSize = 20                                    -- slightly smaller
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top         -- top-align so nothing is clipped
+        resultText.AutomaticSize = Enum.AutomaticSize.Y             -- grow to fit all lines
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\nYour answer was right."
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local correctIndex = questions[currentQuestion].correctAnswer
+                local correctAnswerText = questions[currentQuestion].answers[correctIndex]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. correctAnswerText
+        end
+
+
+        -- move the Continue button below the text
+        local continueButton = Instance.new("TextButton")
+        continueButton.Name = "ContinueButton"
+        continueButton.Parent = resultFrame
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Size = UDim2.new(0.5, 0, 0.15, 0)
+        continueButton.Position = UDim2.new(0.25, 0,
+                resultText.AbsoluteSize.Y / resultFrame.AbsoluteSize.Y + 0.08, 0)
+        -- this lines it up right beneath the auto-sized text
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local completeEvent = gui:FindFirstChild("QuizComplete")
+                                or Instance.new("RemoteEvent", gui)
+                        completeEvent.Name = "QuizComplete"
+                        completeEvent.Parent = gui
+                        completeEvent:FireServer(true)
+                end
+        end)
+end
+
+
+-- Handle submission when the player clicks the Submit button.
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+                if not warningLabel then
+                        warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+-- Remove any emergency button if it exists (cleanup from previous iterations).
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") or (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") then
+                child:Destroy()
+        end
+end
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.2, 0)  -- Taller for text
+questionLabel.Position = UDim2.new(0.05, 0, 0.02, 0)  -- Slightly higher
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 20  -- Slightly smaller text
+questionLabel.TextWrapped = true
+questionLabel.TextYAlignment = Enum.TextYAlignment.Center  -- Center text vertically
+questionLabel.Parent = quizFrame
+
+
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+submitButton.Visible = true
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+questionLabel.Visible = true
+local questions = {
+        {
+                questionText = "From a programming point of view,\n what is recursion?",
+                answers = {
+                        "A stack overflow",
+                        "A function that calls itself",
+                        "Praying to the Machine spirit that your code compiles"
+                },
+                correctAnswer = 2
+        },
+        {
+                questionText = "Do all instances of the recursive case\n need to have the same logic?",
+                answers = {
+                        "Yes",
+                        "No",
+                        "I want to pick this to be funny (you will get the question wrong)"
+                },
+                correctAnswer = 1
+        }
+}
+
+
+
+
+local currentQuestion = 1
+local selectedAnswer = nil
+local answerButtons = {}
+
+
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                button.Position = UDim2.new(0.05, 0, 0.3 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 20
+                button.TextWrapped = true
+                button.Text = answerText
+                button.TextXAlignment = Enum.TextXAlignment.Center
+                button.TextYAlignment = Enum.TextYAlignment.Center
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+displayQuestion(currentQuestion)
+
+
+local function displayResult(isCorrect)
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 22
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\n" .. questions[currentQuestion].questionText
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQuestion].answers[questions[currentQuestion].correctAnswer]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.2, 0)
+        continueButton.Position = UDim2.new(0.25, 0, 0.8, 0)
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: UpgradeManager
+-- In ReplicatedStorage, create a new ModuleScript called "UpgradeManager"
+local UpgradeManager = {}
+
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MechEvents = ReplicatedStorage:WaitForChild("MechEvents")
+local UnlockUpgradeEvent = MechEvents:WaitForChild("UnlockUpgradeEvent")
+local CodeBlocks = ReplicatedStorage:WaitForChild("CodeBlocks")
+local CodeBlocksDX = ReplicatedStorage:WaitForChild("CodeBlocksDX")
+
+
+-- Track unlocked upgrades
+local unlockedUpgrades = {}
+
+
+function UpgradeManager.UnlockRandomUpgrade(player)
+        -- Get all possible upgrades
+        local allUpgrades = {}
+        for _, codeBlock in pairs(CodeBlocks:GetChildren()) do
+                if codeBlock:IsA("ModuleScript") and not unlockedUpgrades[codeBlock.Name] then
+                        table.insert(allUpgrades, codeBlock.Name)
+                end
+        end
+
+
+        if #allUpgrades == 0 then
+                warn("No more upgrades to unlock!")
+                return
+        end
+
+
+        -- Select random upgrade
+        local randomIndex = math.random(1, #allUpgrades)
+        local upgradeName = allUpgrades[randomIndex]
+        unlockedUpgrades[upgradeName] = true
+
+
+        -- Notify client
+        UnlockUpgradeEvent:FireClient(player, upgradeName)
+        print("Unlocked upgrade:", upgradeName)
+        return upgradeName
+end
+
+
+function UpgradeManager.UnlockRandomUpgradeDX(player)
+        -- Get all possible upgrades
+        local allUpgradesDX = {}
+        for _, codeBlockDX in pairs(CodeBlocksDX:GetChildren()) do
+                if codeBlockDX:IsA("ModuleScript") and not unlockedUpgrades[codeBlockDX.Name] then
+                        table.insert(allUpgradesDX, codeBlockDX.Name)
+                end
+        end
+
+
+        if #allUpgradesDX == 0 then
+                warn("No more upgrades to unlock!")
+                return
+        end
+
+
+        -- Select random upgrade
+        local randomIndex = math.random(1, #allUpgradesDX)
+        local upgradeName = allUpgradesDX[randomIndex]
+        unlockedUpgrades[upgradeName] = true
+
+
+        -- Notify client
+        UnlockUpgradeEvent:FireClient(player, upgradeName)
+        print("Unlocked upgrade:", upgradeName)
+        return upgradeName
+end
+
+
+return UpgradeManager
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui4
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+-- Shorter, simpler messages about recursion vs loops
+local messages = {
+        "Now we reach the base case in our explanation of recursion.",
+        "The base case is the simplest a problem can be and is the end of our recursion.",
+        "This is like when we only have one piece of paper left in the sorting example.",
+        "Like all other parts of recursion, the base case will look different for different problems, but it always needs to be there.",
+        "If we had not had the base case in the sorting example, the friend would have ripped that one piece of paper in half and passed it along.",
+        "If you do not have a base case, you will fall into infinite recursion, in which your program never ends.",
+        "Once the base case is hit, you return the simplest case, and that data can be processed to get your desired outcome.",
+        "For the paper sorting example again, this is passing the paper back up the chain of friends, sorting it along the way until it reaches you. "
+}
+
+
+-- Display each message, waiting between them
+for _, message in ipairs(messages) do
+        textLabel.Text = message
+        task.wait(3)  
+end
+
+
+-- Fade out the text
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+-- LocalScript inside TeachingGui5
+local screenGui = script.Parent
+local textLabel = screenGui:FindFirstChildOfClass("TextLabel")
+if not textLabel then
+        textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(0.8, 0, 0.3, 0)
+        textLabel.Position = UDim2.new(0.1, 0, 0.1, 0)
+        textLabel.BackgroundTransparency = 0.5
+        textLabel.TextWrapped = true
+        textLabel.TextScaled = true
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.TextColor3 = Color3.new(1, 1, 1)
+        textLabel.TextSize = 24
+        textLabel.Parent = screenGui
+end
+
+
+local messages = {
+        "Now that you have learned about all of the different parts of recursion, let’s explore how this game actually models recursion.",
+        "Believe it or not, the way you’re going through the levels of the game has modeled a type of recursive search called Depth First Search, or DFS.",
+        "In this specific DFS, you are finding your way around by trying the rightmost door in each room every time.",
+        "The problem simplification is that once a door has been opened, you no longer need to check it, reducing the total number of doors to check.",
+        "In the recursive case, once you enter a room, go through the rightmost door that has not been opened.",
+        "The base case is that if there are no more doors to check, you can go back to the previous room. ",
+        "This is a standard searching algorithm for a data type called a tree.",
+        "But that is not the only thing in this game that resembles recursion.",
+        "After the next quiz, you will find the final boss of the game.",
+        "This boss represents the problem simplification stage that we talked about earlier.",
+        "Each time you kill it, it comes back at half the size, half the health, and half the damage as before until you reach its base case. ",
+        "Another important thing to note is the difference between recursion and loops.",
+        "These two concepts are similar, and they do have a lot of overlap in what they can solve as seen in the sorting example",
+        "The important difference comes down to how you look at the problem and how you want to solve it",
+        "Loops lend themselves better for simpler problems and are quicker to write in these instances but as the problem gets more complex recursion becomes the easier option. ",
+        "We hope you have enjoyed this exploration of recursion and have been inspired to look more into recursion or any other coding topic.",
+        "Most importantly, we hope you have been having fun!"
+}
+
+
+for _, msg in ipairs(messages) do
+        textLabel.Text = msg
+        task.wait(4)
+end
+
+
+for i = 1, 10 do
+        textLabel.TextTransparency = i * 0.1
+        textLabel.BackgroundTransparency = 0.5 + (i * 0.05)
+        task.wait(0.2)
+end
+
+
+screenGui.Enabled = false
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Clean up old buttons/labels
+for _, child in pairs(gui:GetChildren()) do
+        if (child:IsA("TextButton") and child.Name ~= "SubmitButton") or
+                (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") or
+                (child:IsA("Frame") and child.Name ~= "QuizFrame") then
+                child:Destroy()
+        end
+end
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") and (child.Name == "Button" or not child.Name:find("Submit") and not child.Name:find("Answer")) then
+                child:Destroy()
+        end
+end
+
+
+-- Main quiz frame
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+-- Question label
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 24
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+-- Submit button
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+
+
+-- Only first and last questions
+local questions = {
+        {
+                questionText = "The boss in the next room represents",
+                answers = {"You", "The Indomitable Human Spirit ", "Problem Simplification", "Base Case"},
+                correctAnswer = 3
+        },
+        {
+                questionText = "The level structure in this game represents",
+                answers = {
+                        "A tree",
+                        "The rise of AI",
+                        "How confused I am",
+                        "A root"
+                },
+                correctAnswer = 1
+        }
+}
+
+
+local currentQ = 1
+local selected = nil
+local btns = {}
+
+
+local function clearButtons()
+        for _, b in ipairs(btns) do
+                if b.Parent then b:Destroy() end
+        end
+        btns = {}
+end
+
+
+local function showQuestion(idx)
+        clearButtons()
+        selected = nil
+        questionLabel.Text = questions[idx].questionText
+
+
+        for i, ans in ipairs(questions[idx].answers) do
+                local b = Instance.new("TextButton")
+                b.Name = "Answer" .. i
+                b.Size = UDim2.new(0.9, 0, 0.12, 0)
+                b.Position = UDim2.new(0.05, 0, 0.25 + (i - 1) * 0.15, 0)
+                b.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                b.TextSize = 20
+                b.TextWrapped = true
+                b.Text = ans
+                b.Parent = quizFrame
+
+
+                b.MouseButton1Click:Connect(function()
+                        for _, pb in ipairs(btns) do pb.BackgroundColor3 = Color3.fromRGB(200, 200, 200) end
+                        b.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selected = i
+                end)
+
+
+                table.insert(btns, b)
+        end
+
+
+        local wl = quizFrame:FindFirstChild("WarningLabel")
+        if wl then wl:Destroy() end
+end
+
+
+showQuestion(currentQ)
+
+
+local function showResult(isCorrect)
+        clearButtons()
+        submitButton.Visible = false
+
+
+        local rf = Instance.new("Frame")
+        rf.Size = UDim2.new(0.7, 0, 0.5, 0)
+        rf.Position = UDim2.new(0.15, 0, 0.25, 0)
+        rf.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        rf.Parent = gui
+
+
+        local rt = Instance.new("TextLabel")
+        rt.Size = UDim2.new(0.9, 0, 0.7, 0)
+        rt.Position = UDim2.new(0.05, 0, 0.05, 0)
+        rt.BackgroundTransparency = 1
+        rt.TextSize = 22
+        rt.TextWrapped = true
+        rt.TextYAlignment = Enum.TextYAlignment.Top
+        rt.Parent = rf
+
+
+        if isCorrect then
+                rt.TextColor3 = Color3.fromRGB(0, 150, 0)
+                rt.Text = "Correct!\n" .. questions[currentQ].questionText
+        else
+                rt.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQ].answers[questions[currentQ].correctAnswer]
+                rt.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+
+
+        local cb = Instance.new("TextButton")
+        cb.Size = UDim2.new(0.5, 0, 0.2, 0)
+        cb.Position = UDim2.new(0.25, 0, 0.8, 0)
+        cb.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        cb.TextSize = 24
+        cb.Text = "Continue"
+        cb.Parent = rf
+
+
+        cb.MouseButton1Click:Connect(function()
+                rf:Destroy()
+                if currentQ < #questions then
+                        currentQ += 1
+                        submitButton.Visible = true
+                        showQuestion(currentQ)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selected then
+                showResult(selected == questions[currentQ].correctAnswer)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local wl = Instance.new("TextLabel")
+                        wl.Name = "WarningLabel"
+                        wl.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        wl.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        wl.BackgroundTransparency = 1
+                        wl.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        wl.TextSize = 20
+                        wl.Text = "Please select an answer!"
+                        wl.Parent = quizFrame
+                end
+        end
+end)
+
+
+-- Remove any old emergency button
+local em = gui:FindFirstChild("I'm Done (Emergency Button)")
+if em then em:Destroy() end
+
+
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: SpeedUpgradeDX
+return {
+        name = "Speed Upgrade DX",
+        description = [[
+Speed = Speed * 1.5
+Return Speed +50%
+]],
+        apply = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value * 1.5
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local speedMultiplier = mech:FindFirstChild("speedMultiplier")
+                if speedMultiplier then
+                        speedMultiplier.Value = speedMultiplier.Value / 1.5
+                else
+                        warn("speedMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: FireRateUpgradeDX
+return {
+        name = "Fire Rate Upgrade DX",
+        description = [[
+FireRate = FireRate * 1.5
+Return FireRate +50%
+]],
+        apply = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value * 1.5
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local fireRateMultiplier = mech:FindFirstChild("fireRateMultiplier")
+                if fireRateMultiplier then
+                        fireRateMultiplier.Value = fireRateMultiplier.Value / 1.5
+                else
+                        warn("fireRateMultiplier not found in mech")
+                end
+        end
+}
+---------
+Folder: ReplicatedStorage - Type: ModuleScript - Name: DamageUpgradeDX
+return {
+        name = "Damage Upgrade DX",
+        description = [[
+Damage = Damage * 1.5
+Return Damage +50%
+]],
+        apply = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value * 1.5
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end,
+        revert = function(mech)
+                local damageMultiplier = mech:FindFirstChild("damageMultiplier")
+                if damageMultiplier then
+                        damageMultiplier.Value = damageMultiplier.Value / 1.5
+                else
+                        warn("damageMultiplier not found in mech")
+                end
+        end
+}
+
+
+---------
+Folder: ReplicatedStorage - Type: LocalScript - Name: LocalScript
+local player = game.Players.LocalPlayer
+local gui = script.Parent
+
+
+-- Clean up old elements
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") or (child:IsA("TextLabel") and child.Name ~= "QuestionLabel") then
+                child:Destroy()
+        end
+end
+
+
+for _, child in pairs(gui:GetChildren()) do
+        if child:IsA("TextButton") and (child.Name == "Button" or not child.Name:find("Submit") and not child.Name:find("Answer")) then
+                child:Destroy()
+        end
+end
+
+
+local quizFrame = gui:FindFirstChild("QuizFrame") or Instance.new("Frame")
+quizFrame.Name = "QuizFrame"
+quizFrame.Size = UDim2.new(0.7, 0, 0.6, 0)
+quizFrame.Position = UDim2.new(0.15, 0, 0.2, 0)
+quizFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+quizFrame.Parent = gui
+
+
+local questionLabel = gui:FindFirstChild("QuestionLabel") or Instance.new("TextLabel")
+questionLabel.Name = "QuestionLabel"
+questionLabel.Size = UDim2.new(0.9, 0, 0.15, 0)
+questionLabel.Position = UDim2.new(0.05, 0, 0.05, 0)
+questionLabel.BackgroundColor3 = Color3.fromRGB(220, 220, 220)
+questionLabel.TextSize = 20  -- Reduced text size
+questionLabel.TextWrapped = true
+questionLabel.Parent = quizFrame
+
+
+local submitButton = quizFrame:FindFirstChild("SubmitButton") or Instance.new("TextButton")
+submitButton.Name = "SubmitButton"
+submitButton.Size = UDim2.new(0.4, 0, 0.1, 0)
+submitButton.Position = UDim2.new(0.3, 0, 0.85, 0)
+submitButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+submitButton.TextSize = 24
+submitButton.Text = "Submit"
+submitButton.Parent = quizFrame
+
+
+gui.Enabled = true
+quizFrame.Visible = true
+
+
+local questions = {
+        {
+                questionText = "What is the base case telling the recursive program",
+                answers = {
+                        "Invest in the stock marker",
+                        "99% of programs stop right before they solve their problem",
+                        "Wait for all the other recursive branches to catch up",
+                        "STOP"
+                },
+                correctAnswer = 4
+        },
+        {
+                questionText = "What happens if there is no base case",
+                answers = {
+                        "The program is no longer based",
+                        "Infinite recursion",
+                        "The computer restarts out of spite",
+                        "Nobody has ever tried that"
+                },
+                correctAnswer = 2
+        }
+}
+
+
+local currentQuestion = 1
+local selectedAnswer = nil
+local answerButtons = {}
+
+
+local function clearAnswerButtons()
+        for _, btn in pairs(answerButtons) do
+                if btn and btn.Parent then
+                        btn:Destroy()
+                end
+        end
+        answerButtons = {}
+end
+
+
+local function displayQuestion(qIndex)
+        clearAnswerButtons()
+        selectedAnswer = nil
+        questionLabel.Text = questions[qIndex].questionText
+
+
+        for i, answerText in ipairs(questions[qIndex].answers) do
+                local button = Instance.new("TextButton")
+                button.Name = "Answer" .. i
+                button.Size = UDim2.new(0.9, 0, 0.12, 0)
+                button.Position = UDim2.new(0.05, 0, 0.25 + (i-1)*0.15, 0)
+                button.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                button.TextSize = 18  -- Reduced text size
+                button.TextWrapped = true
+                button.Text = answerText
+                button.Parent = quizFrame
+
+
+                button.MouseButton1Click:Connect(function()
+                        for _, btn in pairs(answerButtons) do
+                                btn.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+                        end
+                        button.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                        selectedAnswer = i
+                end)
+
+
+                table.insert(answerButtons, button)
+        end
+
+
+        local warningLabel = quizFrame:FindFirstChild("WarningLabel")
+        if warningLabel then
+                warningLabel:Destroy()
+        end
+end
+
+
+displayQuestion(currentQuestion)
+
+
+local function displayResult(isCorrect)
+        clearAnswerButtons()
+        submitButton.Visible = false
+
+
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Size = UDim2.new(0.7, 0, 0.5, 0)
+        resultFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+        resultFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+        resultFrame.Parent = gui
+
+
+        local resultText = Instance.new("TextLabel")
+        resultText.Size = UDim2.new(0.9, 0, 0.7, 0)
+        resultText.Position = UDim2.new(0.05, 0, 0.05, 0)
+        resultText.BackgroundTransparency = 1
+        resultText.TextSize = 20
+        resultText.TextWrapped = true
+        resultText.TextYAlignment = Enum.TextYAlignment.Top
+
+
+        if isCorrect then
+                resultText.TextColor3 = Color3.fromRGB(0, 150, 0)
+                resultText.Text = "Correct!\n" .. questions[currentQuestion].questionText
+        else
+                resultText.TextColor3 = Color3.fromRGB(150, 0, 0)
+                local ca = questions[currentQuestion].answers[questions[currentQuestion].correctAnswer]
+                resultText.Text = "Incorrect.\nThe correct answer was:\n" .. ca
+        end
+        resultText.Parent = resultFrame
+
+
+        local continueButton = Instance.new("TextButton")
+        continueButton.Size = UDim2.new(0.5, 0, 0.2, 0)
+        continueButton.Position = UDim2.new(0.25, 0, 0.8, 0)
+        continueButton.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        continueButton.TextSize = 24
+        continueButton.Text = "Continue"
+        continueButton.Parent = resultFrame
+
+
+        continueButton.MouseButton1Click:Connect(function()
+                resultFrame:Destroy()
+                if currentQuestion < #questions then
+                        currentQuestion += 1
+                        submitButton.Visible = true
+                        displayQuestion(currentQuestion)
+                else
+                        local ev = gui:FindFirstChild("QuizComplete") or Instance.new("RemoteEvent", gui)
+                        ev.Name = "QuizComplete"
+                        ev:FireServer(true)
+                end
+        end)
+end
+
+
+submitButton.MouseButton1Click:Connect(function()
+        if selectedAnswer then
+                local isCorrect = (selectedAnswer == questions[currentQuestion].correctAnswer)
+                displayResult(isCorrect)
+        else
+                if not quizFrame:FindFirstChild("WarningLabel") then
+                        local warningLabel = Instance.new("TextLabel")
+                        warningLabel.Name = "WarningLabel"
+                        warningLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+                        warningLabel.Position = UDim2.new(0.05, 0, 0.75, 0)
+                        warningLabel.BackgroundTransparency = 1
+                        warningLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                        warningLabel.TextSize = 20
+                        warningLabel.Text = "Please select an answer!"
+                        warningLabel.Parent = quizFrame
+                end
+        end
+end)
+
+
+local emergencyButton = gui:FindFirstChild("I'm Done (Emergency Button)")
+if emergencyButton then
+        emergencyButton:Destroy()
+end
+---------
